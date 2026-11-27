@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faculty Workload Planner</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <section id="login" class="login-box">
+        <h1>Faculty Workload Planner</h1>
+        <p class="subtitle">Administrator Sign In (Classroom Demo)</p>
+        <form id="loginForm">
+            <label for="username">Username</label>
+            <input id="username" autocomplete="username" required>
+            <label for="password">Password</label>
+            <input id="password" type="password" autocomplete="current-password" required>
+            <button type="submit">Log in</button>
+            <p id="loginMessage" class="message warning" role="status" hidden></p>
+        </form>
+        <small>Classroom frontend demonstration only, not production security. Academic records are stored locally in this browser.</small>
+    </section>
+
+    <div id="app" hidden>
+        <header>
+            <div>
+                <h1>Faculty Workload Planner</h1>
+                <p>University academic workload and timetable management</p>
+            </div>
+            <button id="logoutButton" type="button">Log out</button>
+        </header>
+        <nav aria-label="Primary navigation">
+            <button type="button" class="nav-button" value="home">Overview</button>
+            <button type="button" class="nav-button" value="courses">Courses</button>
+            <button type="button" class="nav-button" value="faculty">Faculty</button>
+            <button type="button" class="nav-button" value="allocation">Allocation</button>
+            <button type="button" class="nav-button" value="report">Report</button>
+        </nav>
+        <main>
+            <div class="semester">
+                <div>
+                    <label for="semester">Current semester</label>
+                    <small class="hint">Workflow: Select semester &rarr; Register courses &rarr; Register faculty &rarr; Allocate classes &rarr; View reports</small>
+                </div>
+                <select id="semester">
+                    <option>Semester 1</option>
+                    <option>Semester 2</option>
+                    <option>Semester 3</option>
+                    <option>Semester 4</option>
+                    <option>Semester 5</option>
+                    <option>Semester 6</option>
+                    <option>Semester 7</option>
+                    <option>Semester 8</option>
+                </select>
+            </div>
+
+            <section id="home" class="page">
+                <h2>Overview</h2>
+                <div class="summary">
+                    <div class="card"><span>Total Faculty</span><strong id="totalFaculty">0</strong></div>
+                    <div class="card"><span>Courses (This Semester)</span><strong id="totalCourses">0</strong></div>
+                    <div class="card"><span>Scheduled / Required</span><strong id="totalAllocations">0 / 0</strong></div>
+                    <div class="card"><span>Faculty at Limit</span><strong id="totalWarnings">0</strong></div>
+                </div>
+                <div class="panel">
+                    <h3>Semester Status &amp; Workflow</h3>
+                    <p id="semesterDemand" class="info-banner"></p>
+                    <p><strong>Academic workflow:</strong> Select a semester above, register its courses, add or update faculty profiles with eligible courses, then open Allocation to assign available 50-minute weekly slots.</p>
+                    <p><strong>Scheduling assumptions:</strong> One student group per semester, concurrent semester timetables across semesters, and no compulsory lunch break (Monday to Saturday, 9 daily slots = 54 weekly slots).</p>
+                </div>
+            </section>
+
+            <section id="courses" class="page" hidden>
+                <h2>Courses</h2>
+                <p class="section-desc">Each course belongs to a specific semester. Combined weekly classes in one semester cannot exceed 54 slots.</p>
+                <form class="panel form-grid" id="courseForm">
+                    <h3 id="courseFormTitle" class="full-span">Register Course</h3>
+                    <div>
+                        <label for="courseCode">Course code</label>
+                        <input id="courseCode" required maxlength="15" placeholder="e.g. CSE326">
+                    </div>
+                    <div>
+                        <label for="courseName">Course name</label>
+                        <input id="courseName" required maxlength="60" placeholder="e.g. Internet Programming">
+                    </div>
+                    <div>
+                        <label for="courseSemester">Semester</label>
+                        <select id="courseSemester">
+                            <option>Semester 1</option>
+                            <option>Semester 2</option>
+                            <option>Semester 3</option>
+                            <option>Semester 4</option>
+                            <option>Semester 5</option>
+                            <option>Semester 6</option>
+                            <option>Semester 7</option>
+                            <option>Semester 8</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="units">Weekly classes required</label>
+                        <input id="units" type="number" min="1" max="54" required placeholder="1 - 54">
+                    </div>
+                    <div class="form-actions full-span">
+                        <button id="saveCourseButton" type="submit">Add course</button>
+                        <button id="cancelCourseEditButton" type="button" class="secondary-btn" hidden>Cancel edit</button>
+                    </div>
+                    <p id="courseMessage" class="message full-span" role="status" hidden></p>
+                </form>
+                <div class="panel table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Course</th>
+                                <th>Semester</th>
+                                <th>Required</th>
+                                <th>Scheduled</th>
+                                <th>Remaining</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="courseTable"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="faculty" class="page" hidden>
+                <h2>Faculty Profiles</h2>
+                <p class="section-desc">Capacity is a maximum ceiling, not a target. Actual assignments cannot exceed eligible course demand. Hold Ctrl (or Cmd) to select multiple courses.</p>
+                <form class="panel form-grid" id="facultyForm">
+                    <h3 id="facultyFormTitle" class="full-span">Register Faculty</h3>
+                    <div>
+                        <label for="facultyName">Faculty name</label>
+                        <input id="facultyName" required maxlength="60" placeholder="e.g. Dr. Ananya Sharma">
+                    </div>
+                    <div>
+                        <label for="limit">Maximum weekly capacity</label>
+                        <input id="limit" type="number" min="1" max="54" required placeholder="1 - 54">
+                    </div>
+                    <div class="full-span">
+                        <label for="facultyCourses">Eligible courses</label>
+                        <select id="facultyCourses" multiple size="5"></select>
+                    </div>
+                    <div class="form-actions full-span">
+                        <button id="saveFacultyButton" type="submit">Add faculty</button>
+                        <button id="cancelFacultyEditButton" type="button" class="secondary-btn" hidden>Cancel edit</button>
+                    </div>
+                    <p id="facultyMessage" class="message full-span" role="status" hidden></p>
+                </form>
+                <div class="panel table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Eligible courses</th>
+                                <th>Max capacity</th>
+                                <th>Assigned (all)</th>
+                                <th>Unused capacity</th>
+                                <th>Eligible demand</th>
+                                <th>Assignable now</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="facultyTable"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="allocation" class="page" hidden>
+                <h2>Workload Allocation</h2>
+                <p class="section-desc">Select a course in the current semester first, then choose an eligible faculty member, and click an available timetable slot.</p>
+                <form class="panel form-grid" id="allocationForm">
+                    <div>
+                        <label for="selectCourse">1. Course</label>
+                        <select id="selectCourse"></select>
+                    </div>
+                    <div>
+                        <label for="selectFaculty">2. Eligible Faculty</label>
+                        <select id="selectFaculty"></select>
+                    </div>
+                    <p id="allocationPreview" class="info-banner full-span" role="status"></p>
+                    <div hidden>
+                        <label for="day">Day</label>
+                        <select id="day">
+                            <option value="">Select day</option>
+                            <option>Monday</option>
+                            <option>Tuesday</option>
+                            <option>Wednesday</option>
+                            <option>Thursday</option>
+                            <option>Friday</option>
+                            <option>Saturday</option>
+                        </select>
+                    </div>
+                    <div hidden>
+                        <label for="slot">Class slot</label>
+                        <select id="slot">
+                            <option value="">Select class slot</option>
+                        </select>
+                    </div>
+                    <div class="planner table-wrap full-span">
+                        <h3>3. Weekly Timetable Slot</h3>
+                        <p class="legend">
+                            <span class="key free">Available</span>
+                            <span class="key occupied">Semester occupied</span>
+                            <span class="key busy">Faculty busy</span>
+                            <span class="key chosen">Selected</span>
+                            <span class="key locked">Prerequisites incomplete</span>
+                        </p>
+                        <table class="schedule">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Monday</th>
+                                    <th>Tuesday</th>
+                                    <th>Wednesday</th>
+                                    <th>Thursday</th>
+                                    <th>Friday</th>
+                                    <th>Saturday</th>
+                                </tr>
+                            </thead>
+                            <tbody id="slotGrid"></tbody>
+                        </table>
+                    </div>
+                    <p id="selectedSlot" class="info-banner full-span" role="status">No slot selected.</p>
+                    <div class="form-actions full-span">
+                        <button id="assignButton" type="submit" disabled>Assign selected class</button>
+                    </div>
+                    <p id="allocationMessage" class="message full-span" role="status" hidden></p>
+                </form>
+                <div class="panel table-wrap">
+                    <h3>Current Semester Allocations</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Faculty</th>
+                                <th>Course</th>
+                                <th>Day</th>
+                                <th>Time</th>
+                                <th>Units</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="allocationTable"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="report" class="page" hidden>
+                <h2>Workload Report</h2>
+                <h3 id="reportSemester" class="report-subheading"></h3>
+                <div class="summary">
+                    <div class="card"><span>Semester Required</span><strong id="reportRequired">0</strong></div>
+                    <div class="card"><span>Semester Scheduled</span><strong id="reportScheduled">0</strong></div>
+                    <div class="card"><span>Semester Pending</span><strong id="reportPending">0</strong></div>
+                    <div class="card"><span>Semester Status</span><strong id="reportSemesterStatus" class="status-text">No courses</strong></div>
+                </div>
+
+                <h3>Weekly Timetable (Selected Semester)</h3>
+                <div class="panel table-wrap">
+                    <table class="schedule">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Monday</th>
+                                <th>Tuesday</th>
+                                <th>Wednesday</th>
+                                <th>Thursday</th>
+                                <th>Friday</th>
+                                <th>Saturday</th>
+                            </tr>
+                        </thead>
+                        <tbody id="timetable"></tbody>
+                    </table>
+                </div>
+
+                <h3 class="report-subheading">Overall Faculty Workload (All Semesters)</h3>
+                <div class="summary">
+                    <div class="card"><span>Assigned Units (All Semesters)</span><strong id="reportAssigned">0</strong></div>
+                    <div class="card"><span>Combined Capacity Ceiling</span><strong id="reportCapacity">0</strong></div>
+                </div>
+                <div class="panel table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Faculty</th>
+                                <th>This semester</th>
+                                <th>Assigned (all semesters)</th>
+                                <th>Max capacity</th>
+                                <th>Unused capacity</th>
+                                <th>Eligible demand</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportTable"></tbody>
+                    </table>
+                </div>
+                <p class="report-note">Assumptions: One student group per semester, concurrent semester timetables, and no compulsory lunch break. Use Ctrl + P to print this report.</p>
+            </section>
+        </main>
+        <footer>Faculty Workload Planner | CSE326 Academic Scheduling Project</footer>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
